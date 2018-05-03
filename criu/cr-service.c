@@ -787,6 +787,69 @@ out:
 	return send_criu_msg(sk, &resp);
 }
 
+static int start_lazy_pages_daemon_req(int sk, CriuOpts *req) {
+    int ret = -1, pid, start_pipe[2];
+    	ssize_t count;
+    	bool success = false;
+    	CriuResp resp = CRIU_RESP__INIT;
+    	CriuPageServerInfo ps = CRIU_PAGE_SERVER_INFO__INIT;
+    	struct ps_info info;
+
+    	if (pipe(start_pipe)) {
+    		pr_perror("No start pipe");
+    		goto out;
+    	}
+
+    	pid = fork();
+    	if (pid == 0) {
+    		close(start_pipe[0]);
+
+    		if (setup_opts_from_req(sk, req))
+    			goto out_ch;
+
+    		setproctitle("lazy-pages --images-dir %s --page-server --address %s --port %hu", req.images_dir_path, opts.addr, opts.port);
+
+    		pr_debug("Starting lazy pages daemon\n");
+
+            pid = cr_lazy_pages(true);
+    		if (pid < 0)
+    			goto out_ch;
+
+    		info.pid = pid;
+            info.port = opts.port;
+
+            count = write(start_pipe[1], &info, sizeof(info));
+            if (count != sizeof(info))
+                goto out_ch;
+
+    		ret = 0;
+    out_ch:
+    		close(start_pipe[1]);
+    		exit(ret);
+    	}
+
+    	close(start_pipe[1]);
+
+    	count = read(start_pipe[0], &info, sizeof(info));
+    	close(start_pipe[0]);
+    	if (count != sizeof(info))
+    		goto out;
+
+    	ps.pid = info.pid;
+    	ps.has_port = true;
+    	ps.port = info.port;
+
+    	success = true;
+    	ps.has_pid = true;
+    	resp.ps = &ps;
+
+    	pr_debug("Lazy pages daemon started\n");
+    out:
+    	resp.type = CRIU_REQ_TYPE__LAZY_PAGES;
+    	resp.success = success;
+    	return send_criu_msg(sk, &resp);
+}
+
 static int chk_keepopen_req(CriuReq *msg)
 {
 	if (!msg->keep_open)
