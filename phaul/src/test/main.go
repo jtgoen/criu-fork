@@ -144,7 +144,7 @@ func (l *testLocal) DumpCopyRestore(cr *criu.Criu, cfg phaul.PhaulConfig, last_c
 		Fd: proto.Int32(int32(cfg.Memfd)),
 	}
 
-	opts :=  rpc.CriuOpts{
+	opts := rpc.CriuOpts{
 		Pid:         proto.Int32(int32(cfg.Pid)),
 		LogLevel:    proto.Int32(4),
 		LogFile:     proto.String("dump.log"),
@@ -165,7 +165,13 @@ func (l *testLocal) DumpCopyRestore(cr *criu.Criu, cfg phaul.PhaulConfig, last_c
 
 func main() {
 	pid, _ := strconv.Atoi(os.Args[1])
-	lazy, _ := strconv.ParseBool(os.Args[2])
+	var lazy bool
+	if len(os.Args) >= 3 {
+		lazy, _ = strconv.ParseBool(os.Args[2])
+	} else {
+		lazy = false
+	}
+
 	fds, err := syscall.Socketpair(syscall.AF_LOCAL, syscall.SOCK_STREAM, 0)
 	if err != nil {
 		fmt.Printf("Can't make socketpair: %v\n", err)
