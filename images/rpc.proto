@@ -146,7 +146,7 @@ enum criu_req_type {
 	WAIT_PID	= 11;
 	PAGE_SERVER_CHLD = 12;
 
-    LAZY_PAGES 	= 13;
+	LAZY_PAGES 	= 13;
 }
 
 /*
