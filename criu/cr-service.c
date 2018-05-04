@@ -1105,6 +1105,8 @@ more:
 	case CRIU_REQ_TYPE__PAGE_SERVER_CHLD:
 		ret = start_page_server_req(sk, msg->opts, false);
 		break;
+	case CRIU_REQ_TYPE__LAZY_PAGES:
+        ret = start_lazy_pages_daemon_req(sk, msg->opts);
 	case CRIU_REQ_TYPE__WAIT_PID:
 		ret =  handle_wait_pid(sk, msg->pid);
 		break;
