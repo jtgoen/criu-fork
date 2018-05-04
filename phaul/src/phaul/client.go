@@ -52,7 +52,7 @@ func isLastIter(iter int, stats *stats.DumpStatsEntry, prev_stats *stats.DumpSta
 }
 
 func (pc *PhaulClient) Migrate() error {
-	criu := criu.MakeCriu()
+	criu_c := criu.MakeCriu()
 	psi := rpc.CriuPageServerInfo{
 		Fd: proto.Int32(int32(pc.cfg.Memfd)),
 	}
@@ -61,70 +61,79 @@ func (pc *PhaulClient) Migrate() error {
 		LogLevel: proto.Int32(4),
 		LogFile:  proto.String("pre-dump.log"),
 		Ps:       &psi,
+		LazyPages: proto.Bool(pc.cfg.Lazy),
 	}
 
-	err := criu.Prepare()
+	err := criu_c.Prepare()
 	if err != nil {
 		return err
 	}
 
-	defer criu.Cleanup()
+	defer criu_c.Cleanup()
 
 	imgs, err := preparePhaulImages(pc.cfg.Wdir)
 	if err != nil {
 		return err
 	}
-	prev_stats := &stats.DumpStatsEntry{}
-	iter := 0
 
-	for {
-		err = pc.remote.StartIter()
+	if pc.cfg.Lazy {
+		err = pc.local.DumpCopyRestore(criu_c, pc.cfg, "")
 		if err != nil {
 			return err
 		}
+	} else {
+		prev_stats := &stats.DumpStatsEntry{}
+		iter := 0
 
-		prev_p := imgs.lastImagesDir()
-		img_dir, err := imgs.openNextDir()
-		if err != nil {
-			return err
-		}
+		for {
+			err = pc.remote.StartIter()
+			if err != nil {
+				return err
+			}
 
-		opts.ImagesDirFd = proto.Int32(int32(img_dir.Fd()))
-		if prev_p != "" {
+			prev_p := imgs.lastImagesDir()
+			img_dir, err := imgs.openNextDir()
+			if err != nil {
+				return err
+			}
+
+			opts.ImagesDirFd = proto.Int32(int32(img_dir.Fd()))
+			if prev_p != "" {
 			opts.ParentImg = proto.String(prev_p)
-		}
+			}
 
-		err = criu.PreDump(opts, nil)
-		img_dir.Close()
-		if err != nil {
-			return err
-		}
+			err = criu_c.PreDump(opts, nil)
+			img_dir.Close()
+			if err != nil {
+				return err
+			}
 
-		err = pc.remote.StopIter()
-		if err != nil {
-			return err
-		}
+			err = pc.remote.StopIter()
+			if err != nil {
+				return err
+			}
 
-		st, err := criuGetDumpStats(img_dir)
-		if err != nil {
-			return err
-		}
+			st, err := criuGetDumpStats(img_dir)
+			if err != nil {
+				return err
+			}
 
-		if isLastIter(iter, st, prev_stats) {
-			break
-		}
+			if isLastIter(iter, st, prev_stats) {
+				break
+			}
 
-		prev_stats = st
-	}
+			prev_stats = st
+			}
 
-	err = pc.remote.StartIter()
-	if err == nil {
-		prev_p := imgs.lastImagesDir()
-		err = pc.local.DumpCopyRestore(criu, pc.cfg, prev_p)
-		err2 := pc.remote.StopIter()
-		if err == nil {
-			err = err2
-		}
+			err = pc.remote.StartIter()
+			if err == nil {
+				prev_p := imgs.lastImagesDir()
+				err = pc.local.DumpCopyRestore(criu_c, pc.cfg, prev_p)
+				err2 := pc.remote.StopIter()
+				if err == nil {
+					err = err2
+				}
+			}
 	}
 
 	return err

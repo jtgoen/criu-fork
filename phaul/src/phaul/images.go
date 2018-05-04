@@ -15,6 +15,10 @@ func preparePhaulImages(wdir string) (*images, error) {
 	return &images{dir: wdir}, nil
 }
 
+func (i *images) getParentPath() string {
+	return i.dir
+}
+
 func (i *images) getPath(idx int) string {
 	return fmt.Sprintf(i.dir+"/%d", idx)
 }

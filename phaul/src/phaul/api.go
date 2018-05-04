@@ -12,11 +12,13 @@ import (
  * transfer memory pages.
  * Wdir is the directory where phaul can put images
  * and other stuff
+ * Lazy is a flag to determine if lazy migration is being conducted
  */
 type PhaulConfig struct {
 	Pid   int
 	Memfd int
 	Wdir  string
+	Lazy  bool
 }
 
 /*
@@ -25,6 +27,7 @@ type PhaulConfig struct {
  * should be called on PhaulServer object.
  */
 type PhaulRemote interface {
+	StartLazyPages() error
 	StartIter() error
 	StopIter() error
 }

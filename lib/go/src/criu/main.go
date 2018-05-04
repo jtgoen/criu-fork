@@ -79,7 +79,7 @@ func (c *Criu) doSwrk(req_type rpc.CriuReqType, opts *rpc.CriuOpts, nfy CriuNoti
 	}
 	resp_type := resp.GetType()
 	if resp_type != req_type {
-		return errors.New("unexpected responce")
+		return errors.New("unexpected response")
 	}
 
 	return nil
@@ -187,6 +187,15 @@ func (c *Criu) PreDump(opts rpc.CriuOpts, nfy CriuNotify) error {
 
 func (c *Criu) StartPageServer(opts rpc.CriuOpts) error {
 	return c.doSwrk(rpc.CriuReqType_PAGE_SERVER, &opts, nil)
+}
+
+func (c *Criu) StartLazyPages(opts rpc.CriuOpts) (int, int, error) {
+	resp, err := c.doSwrkWithResp(rpc.CriuReqType_LAZY_PAGES, &opts, nil)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return int(resp.Ps.GetPid()), int(resp.Ps.GetPort()), nil
 }
 
 func (c *Criu) StartPageServerChld(opts rpc.CriuOpts) (int, int, error) {

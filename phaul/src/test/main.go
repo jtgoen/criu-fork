@@ -81,20 +81,28 @@ func mergeImages(dump_dir, last_pre_dump_dir string) error {
 }
 
 func (r *testRemote) doRestore() error {
-	last_srv_images_dir := r.srv.LastImagesDir()
-	/*
-	 * In images_dir we have images from dump, in the
-	 * last_srv_images_dir -- where server-side images
-	 * (from page server, with pages and pagemaps) are.
-	 * Need to put former into latter and restore from
-	 * them.
-	 */
-	err := mergeImages(images_dir+"/test", last_srv_images_dir)
-	if err != nil {
-		return err
+	img_path := ""
+	if r.srv.IsLazy() {
+		img_path = r.srv.GetDir()
+
+	} else {
+		last_srv_images_dir := r.srv.LastImagesDir()
+		/*
+		 * In images_dir we have images from dump, in the
+		 * last_srv_images_dir -- where server-side images
+		 * (from page server, with pages and pagemaps) are.
+		 * Need to put former into latter and restore from
+		 * them.
+		 */
+		err := mergeImages(images_dir+"/test", last_srv_images_dir)
+		if err != nil {
+			return err
+		}
+
+		img_path = last_srv_images_dir
 	}
 
-	img_dir, err := os.Open(last_srv_images_dir)
+	img_dir, err := os.Open(img_path)
 	if err != nil {
 		return err
 	}
@@ -104,6 +112,7 @@ func (r *testRemote) doRestore() error {
 		LogLevel:    proto.Int32(4),
 		LogFile:     proto.String("restore.log"),
 		ImagesDirFd: proto.Int32(int32(img_dir.Fd())),
+		LazyPages:   proto.Bool(r.srv.IsLazy()),
 	}
 
 	cr := r.srv.GetCriu()
@@ -112,6 +121,13 @@ func (r *testRemote) doRestore() error {
 }
 
 func (l *testLocal) PostDump() error {
+	if l.r.srv.IsLazy() {
+		err := l.r.srv.StartLazyPages()
+		if err != nil {
+			return err
+		}
+	}
+
 	return l.r.doRestore()
 }
 
@@ -128,7 +144,7 @@ func (l *testLocal) DumpCopyRestore(cr *criu.Criu, cfg phaul.PhaulConfig, last_c
 		Fd: proto.Int32(int32(cfg.Memfd)),
 	}
 
-	opts := rpc.CriuOpts{
+	opts :=  rpc.CriuOpts{
 		Pid:         proto.Int32(int32(cfg.Pid)),
 		LogLevel:    proto.Int32(4),
 		LogFile:     proto.String("dump.log"),
@@ -137,6 +153,11 @@ func (l *testLocal) DumpCopyRestore(cr *criu.Criu, cfg phaul.PhaulConfig, last_c
 		ParentImg:   proto.String(last_cln_images_dir),
 		Ps:          &psi,
 	}
+	if cfg.Lazy {
+		opts.LazyPages = proto.Bool(true)
+	} else {
+		opts.ParentImg = proto.String(last_cln_images_dir)
+	}
 
 	fmt.Printf("Do dump\n")
 	return cr.Dump(opts, l)
@@ -144,6 +165,7 @@ func (l *testLocal) DumpCopyRestore(cr *criu.Criu, cfg phaul.PhaulConfig, last_c
 
 func main() {
 	pid, _ := strconv.Atoi(os.Args[1])
+	lazy, _ := strconv.ParseBool(os.Args[2])
 	fds, err := syscall.Socketpair(syscall.AF_LOCAL, syscall.SOCK_STREAM, 0)
 	if err != nil {
 		fmt.Printf("Can't make socketpair: %v\n", err)
@@ -161,7 +183,8 @@ func main() {
 	srv, err := phaul.MakePhaulServer(phaul.PhaulConfig{
 		Pid:   pid,
 		Memfd: fds[1],
-		Wdir:  images_dir + "/remote"})
+		Wdir:  images_dir + "/remote",
+		Lazy:  lazy})
 	if err != nil {
 		fmt.Printf("Unable to run a server: %v", err)
 		os.Exit(1)
@@ -175,7 +198,8 @@ func main() {
 		phaul.PhaulConfig{
 			Pid:   pid,
 			Memfd: fds[0],
-			Wdir:  images_dir + "/local"})
+			Wdir:  images_dir + "/local",
+			Lazy:  lazy})
 	if err != nil {
 		fmt.Printf("Unable to run a client: %v\n", err)
 		os.Exit(1)
