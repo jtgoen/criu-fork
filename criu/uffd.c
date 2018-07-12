@@ -1284,26 +1284,47 @@ int cr_lazy_pages(bool daemon)
 	int lazy_sk;
 	int ret;
 
-	if (kerndat_uffd() || !kdat.has_uffd)
-		return -1;
+	FILE *fp = fopen("/var/log/criu/test-rogue-log.txt", "a");
+	fprintf(fp, "CRLP: Entered cr_lazy_pages(bool)\n");
+	fflush(fp);
 
-	if (prepare_dummy_pstree())
+	if (kerndat_uffd() || !kdat.has_uffd) {
+		fprintf(fp, "CRLP: kerndat uffd failure\n");
+		fflush(fp);
+		fclose(fp);
 		return -1;
+	}
+	if (prepare_dummy_pstree()){
+		fprintf(fp, "CRLP: prepare_dummy_pstree() failure\n");
+		fflush(fp);
+		fclose(fp);
+		return -1;
+	}
 
 	lazy_sk = prepare_lazy_socket();
-	if (lazy_sk < 0)
+	if (lazy_sk < 0){
+		fprintf(fp, "CRLP: prepare_lazy_socket() failure: %d\n", lazy_sk);
+		fflush(fp);
+		fclose(fp);
 		return -1;
+	}
 
 	if (daemon) {
 		ret = cr_daemon(1, 0, &lazy_sk, -1);
 		if (ret == -1) {
 			pr_err("Can't run in the background\n");
+			fprintf(fp, "CRLP: Can't run in the background\n");
+			fflush(fp);
+			fclose(fp);
 			return -1;
 		}
 		if (ret > 0) { /* parent task, daemon started */
 			if (opts.pidfile) {
 				if (write_pidfile(ret) == -1) {
 					pr_perror("Can't write pidfile");
+					fprintf(fp, "CRLP: Can't write pidfile\n");
+					fflush(fp);
+					fclose(fp);
 					kill(ret, SIGKILL);
 					waitpid(ret, NULL, 0);
 					return -1;
@@ -1314,9 +1335,12 @@ int cr_lazy_pages(bool daemon)
 		}
 	}
 
-	if (close_status_fd())
+	if (close_status_fd()) {
+		fprintf(fp, "CRLP: close_status_fd() failure\n");
+		fflush(fp);
+		fclose(fp);
 		return -1;
-
+	}
 	/*
 	 * we poll nr_tasks userfault fds, UNIX socket between lazy-pages
 	 * daemon and the cr-restore, and, optionally TCP socket for
@@ -1324,18 +1348,33 @@ int cr_lazy_pages(bool daemon)
 	 */
 	nr_fds = task_entries->nr_tasks + (opts.use_page_server ? 2 : 1);
 	epollfd = epoll_prepare(nr_fds, &events);
-	if (epollfd < 0)
+	if (epollfd < 0) {
+		fprintf(fp, "CRLP: epoll_prepare(nr_fds, &events) failure: %d\n", epollfd);
+		fflush(fp);
+		fclose(fp);
 		return -1;
+	}
 
-	if (prepare_uffds(lazy_sk, epollfd))
+	if (prepare_uffds(lazy_sk, epollfd)) {
+		fprintf(fp, "CRLP: prepare_uffds(lazy_sk, epollfd) failure\n");
+		fflush(fp);
+		fclose(fp);
 		return -1;
+	}
 
 	if (opts.use_page_server) {
-		if (connect_to_page_server_to_recv(epollfd))
+		if (connect_to_page_server_to_recv(epollfd)) {
+			fprintf(fp, "CRLP: connect_to_page_server_to_recv(epollfd) failure\n");
+			fflush(fp);
+			fclose(fp);
 			return -1;
+		}
 	}
 
 	ret = handle_requests(epollfd, events, nr_fds);
+	fprintf(fp, "CRLP: handle_requests(epollfd, events, nr_fds) result: %d\n", ret);
+	fflush(fp);
+	fclose(fp);
 
 	return ret;
 }

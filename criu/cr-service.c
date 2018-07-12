@@ -52,6 +52,11 @@ unsigned int service_sk_ino = -1;
 static int recv_criu_msg(int socket_fd, CriuReq **req)
 {
 	unsigned char *buf;
+	FILE *fp = fopen("/var/log/criu/test-rogue-log.txt", "a");
+	fprintf(fp, "logfd: %d\n", log_get_fd());
+	
+	fflush(fp);
+	fclose(fp);
 	int len;
 
 	len = recv(socket_fd, NULL, 0, MSG_TRUNC | MSG_PEEK);
@@ -243,6 +248,7 @@ static int setup_opts_from_req(int sk, CriuOpts *req)
 	char work_dir_path[PATH_MAX];
 	char status_fd[PATH_MAX];
 	int i;
+	int new_out_fd = -1;
 
 	if (getsockopt(sk, SOL_SOCKET, SO_PEERCRED, &ids, &ids_len)) {
 		pr_perror("Can't get socket options");
@@ -301,6 +307,10 @@ static int setup_opts_from_req(int sk, CriuOpts *req)
 		pr_perror("Can't initiate log");
 		goto err;
 	}
+
+
+	new_out_fd = open("/var/log/criu/testlog.txt", O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWUSR);
+	dup2(new_out_fd, log_get_fd());
 
 	if (log_keep_err()) {
 		pr_perror("Can't tune log");
@@ -539,9 +549,13 @@ static int setup_opts_from_req(int sk, CriuOpts *req)
 	if (check_namespace_opts())
 		goto err;
 
+	close(new_out_fd);
+
 	return 0;
 
 err:
+	close(new_out_fd);
+	
 	set_cr_errno(EBADRQC);
 	return -1;
 }
@@ -789,17 +803,26 @@ out:
 
 static int start_lazy_pages_daemon_req(int sk, CriuOpts *req) {
     int ret = -1, pid, start_pipe[2];
-    	ssize_t count;
+	FILE *fp = fopen("/var/log/criu/test-rogue-log.txt", "a");
+    	fprintf(fp, "Entered LPDreq\n");
+	fflush(fp);
+	ssize_t count;
     	bool success = false;
     	CriuResp resp = CRIU_RESP__INIT;
     	CriuPageServerInfo ps = CRIU_PAGE_SERVER_INFO__INIT;
     	struct ps_info info;
 
+    	fprintf(fp, "Test: Decl\n");
+	fflush(fp);
     	if (pipe(start_pipe)) {
+    		fprintf(fp, "No start pipe\n");
+		fflush(fp);
     		pr_perror("No start pipe");
     		goto out;
     	}
 
+    	fprintf(fp, "Test: Pre-fork\n");
+	fflush(fp);
     	pid = fork();
     	if (pid == 0) {
     		close(start_pipe[0]);
@@ -809,19 +832,27 @@ static int start_lazy_pages_daemon_req(int sk, CriuOpts *req) {
 
     		setproctitle("lazy-pages --images-dir %s --page-server --address %s --port %hu", req.images_dir_path, opts.addr, opts.port);
 
+    		fprintf(fp, "Child: Starting lazy pages daemon\n");
+		fflush(fp);
     		pr_debug("Starting lazy pages daemon\n");
 
             pid = cr_lazy_pages(true);
-    		if (pid < 0)
+    		fprintf(fp, "Child: cr_lazy_pages result pid: %d\n", pid);
+		fflush(fp);
+    		if (pid < 0) {
+    			fprintf(fp, "Child: cr_lazy_pages failed with pid  %d\n", pid);
+			fflush(fp);
     			goto out_ch;
-
+		}
     		info.pid = pid;
             info.port = opts.port;
 
             count = write(start_pipe[1], &info, sizeof(info));
-            if (count != sizeof(info))
+            if (count != sizeof(info)) {
+    		fprintf(fp, "Child: write to start_pipe[1] failed\n");
+		fflush(fp);
                 goto out_ch;
-
+	    }
     		ret = 0;
     out_ch:
     		close(start_pipe[1]);
@@ -843,10 +874,13 @@ static int start_lazy_pages_daemon_req(int sk, CriuOpts *req) {
     	ps.has_pid = true;
     	resp.ps = &ps;
 
+    	fprintf(fp, "Lazy pages daemon started\n");
+	fflush(fp);
     	pr_debug("Lazy pages daemon started\n");
     out:
     	resp.type = CRIU_REQ_TYPE__LAZY_PAGES;
     	resp.success = success;
+	fclose(fp);
     	return send_criu_msg(sk, &resp);
 }
 
@@ -1086,6 +1120,7 @@ more:
 	if (chk_keepopen_req(msg))
 		goto err;
 
+	FILE *fp = fopen("/var/log/criu/test-rogue-log.txt", "a");
 	switch (msg->type) {
 	case CRIU_REQ_TYPE__DUMP:
 		ret = dump_using_req(sk, msg->opts);
@@ -1106,7 +1141,9 @@ more:
 		ret = start_page_server_req(sk, msg->opts, false);
 		break;
 	case CRIU_REQ_TYPE__LAZY_PAGES:
-        	ret = start_lazy_pages_daemon_req(sk, msg->opts);
+        	fprintf(fp, "Calling start_lazy_pages_daemon_req\n");
+		fflush(fp);
+		ret = start_lazy_pages_daemon_req(sk, msg->opts);
 	case CRIU_REQ_TYPE__WAIT_PID:
 		ret =  handle_wait_pid(sk, msg->pid);
 		break;
@@ -1126,6 +1163,7 @@ more:
 		break;
 	}
 
+	fclose(fp);
 	if (!ret && msg->keep_open) {
 		criu_req__free_unpacked(msg, NULL);
 		ret = -1;

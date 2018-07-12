@@ -25,7 +25,7 @@ type testRemote struct {
 /* Dir where test will put dump images */
 const images_dir = "test_images"
 
-func prepareImages() error {
+func prepareImages(lazy bool) error {
 	err := os.Mkdir(images_dir, 0700)
 	if err != nil {
 		return err
@@ -42,11 +42,13 @@ func prepareImages() error {
 	if err != nil {
 		return err
 	}
-
-	/* Work dir for DumpCopyRestore */
-	err = os.Mkdir(images_dir+"/test", 0700)
-	if err != nil {
-		return err
+	
+	if !lazy {
+		/* Work dir for DumpCopyRestore */
+		err = os.Mkdir(images_dir+"/test", 0700)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -117,7 +119,12 @@ func (r *testRemote) doRestore() error {
 
 	cr := r.srv.GetCriu()
 	fmt.Printf("Do restore\n")
-	return cr.Restore(opts, nil)
+	err = cr.Restore(opts, nil)
+	if err != nil {
+		fmt.Println(err);
+	}
+	fmt.Println("Finished restoring");
+	return err;
 }
 
 func (l *testLocal) PostDump() error {
@@ -133,8 +140,13 @@ func (l *testLocal) PostDump() error {
 
 func (l *testLocal) DumpCopyRestore(cr *criu.Criu, cfg phaul.PhaulConfig, last_cln_images_dir string) error {
 	fmt.Printf("Final stage\n")
-
-	img_dir, err := os.Open(images_dir + "/test")
+	var img_dir *os.File
+	var err error
+	if cfg.Lazy {
+		img_dir, err = os.Open(images_dir + "/remote")
+	} else {
+		img_dir, err = os.Open(images_dir + "/test")
+	}
 	if err != nil {
 		return err
 	}
@@ -150,7 +162,6 @@ func (l *testLocal) DumpCopyRestore(cr *criu.Criu, cfg phaul.PhaulConfig, last_c
 		LogFile:     proto.String("dump.log"),
 		ImagesDirFd: proto.Int32(int32(img_dir.Fd())),
 		TrackMem:    proto.Bool(true),
-		ParentImg:   proto.String(last_cln_images_dir),
 		Ps:          &psi,
 	}
 	if cfg.Lazy {
@@ -178,7 +189,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = prepareImages()
+	err = prepareImages(lazy)
 	if err != nil {
 		fmt.Printf("Can't prepare dirs for images: %v\n", err)
 		os.Exit(1)

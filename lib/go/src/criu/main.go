@@ -190,11 +190,14 @@ func (c *Criu) StartPageServer(opts rpc.CriuOpts) error {
 }
 
 func (c *Criu) StartLazyPages(opts rpc.CriuOpts) (int, int, error) {
+	fmt.Printf("Made it into StartLazyPages(opts)!\n")
 	resp, err := c.doSwrkWithResp(rpc.CriuReqType_LAZY_PAGES, &opts, nil)
+	fmt.Printf("Made it after doSwrkWithResp! resp: %d %d\n",resp.Ps.GetPid(), resp.Ps.GetPort())
 	if err != nil {
+		fmt.Println(err)
 		return 0, 0, err
 	}
-
+	fmt.Println("Returning from StartLazyPages(opts)")
 	return int(resp.Ps.GetPid()), int(resp.Ps.GetPort()), nil
 }
 

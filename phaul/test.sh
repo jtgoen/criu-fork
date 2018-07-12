@@ -4,4 +4,4 @@ set -e -x
 
 ./piggie
 
-./src/test/test `pidof piggie`
+./src/test/test `pidof piggie` "true"

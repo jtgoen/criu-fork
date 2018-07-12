@@ -1418,19 +1418,38 @@ int prepare_pstree(void)
 int prepare_dummy_pstree(void)
 {
 	pid_t dummy = 0;
-
-	if (check_img_inventory() == -1)
+	FILE *fp = fopen("/var/log/criu/test-rogue-log.txt", "a");
+	fprintf(fp, "PDPT: Entered prepare_dummy_pstree()\n");
+	fflush(fp);
+	if (check_img_inventory() == -1) {
+		fprintf(fp, "PDPT: check_img_inventory() failure\n");
+		fflush(fp);
+		fclose(fp);
 		return -1;
+	}
 
-	if (prepare_task_entries() == -1)
+	if (prepare_task_entries() == -1) {
+		fprintf(fp, "PDPT: prepare_task_entries() failure\n");
+		fflush(fp);
+		fclose(fp);
 		return -1;
+	}
 
-	if (read_ns_with_hookups())
+	if (read_ns_with_hookups()) {
+		fprintf(fp, "PDPT: read_ns_with_hookups() failure\n");
+		fflush(fp);
+		fclose(fp);
 		return -1;
+	}
 
-	if (read_pstree_image(&dummy) == -1)
+	if (read_pstree_image(&dummy) == -1) {
+		fprintf(fp, "PDPT: read_pstree_image(&dummy) failure\n");
+		fflush(fp);
+		fclose(fp);
 		return -1;
+	}
 
+	fclose(fp);
 	return 0;
 }
 

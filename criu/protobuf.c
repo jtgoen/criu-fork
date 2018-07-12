@@ -32,8 +32,21 @@ static char *image_name(struct cr_img *img)
 	int fd = img->_x.fd;
 	static char image_path[PATH_MAX];
 
-	if (read_fd_link(fd, image_path, sizeof(image_path)) > 0)
+	FILE *fp = fopen("/var/log/criu/test-rogue-log.txt", "a");
+	fprintf(fp, "IN: Entered image_name()\n");
+	fflush(fp);
+	
+	if (read_fd_link(fd, image_path, sizeof(image_path)) > 0) {
+		fprintf(fp, "IN: read_fd_link(fd, image_path, sizeof(image_path)) success. Path: %s\n", image_path);
+		fflush(fp);
+		fclose(fp);
 		return image_path;
+	}
+
+	fprintf(fp, "IN: read_fd_link(fd, image_path, sizeof(image_path)) failure\n");
+	fflush(fp);
+	fclose(fp);
+
 	return NULL;
 }
 
@@ -55,9 +68,17 @@ int do_pb_read_one(struct cr_img *img, void **pobj, int type, bool eof)
 	u32 size;
 	int ret;
 
+	FILE *fp = fopen("/var/log/criu/test-rogue-log.txt", "a");
+	fprintf(fp, "PBRO: Entered do_pb_read_one()\n");
+	fflush(fp);
+
 	if (!cr_pb_descs[type].pb_desc) {
 		pr_err("Wrong object requested %d on %s\n",
 			type, image_name(img));
+		fprintf(fp, "PBRO: Wrong object requested %d on %s\n",
+			type, image_name(img));
+		fflush(fp);
+		fclose(fp);
 		return -1;
 	}
 
@@ -73,12 +94,21 @@ int do_pb_read_one(struct cr_img *img, void **pobj, int type, bool eof)
 		} else {
 			pr_err("Unexpected EOF on %s\n",
 			       image_name(img));
+			fprintf(fp, "PBRO: Unexpected EOF on %s\n",
+			       image_name(img));
+			fflush(fp);
+			fclose(fp);
 			return -1;
 		}
 	} else if (ret < sizeof(size)) {
 		pr_perror("Read %d bytes while %d expected on %s",
 			  ret, (int)sizeof(size),
 			  image_name(img));
+		fprintf(fp, "PBRO: Read %d bytes while %d expected on %s\n",
+			  ret, (int)sizeof(size),
+			  image_name(img));
+		fflush(fp);
+		fclose(fp);
 		return -1;
 	}
 
@@ -93,10 +123,16 @@ int do_pb_read_one(struct cr_img *img, void **pobj, int type, bool eof)
 	if (ret < 0) {
 		pr_perror("Can't read %d bytes from file %s",
 			  size, image_name(img));
+		fprintf(fp, "PBRO: Can't read %d bytes from file %s\n",
+			  size, image_name(img));
+		fflush(fp);
 		goto err;
 	} else if (ret != size) {
 		pr_perror("Read %d bytes while %d expected from %s",
 			  ret, size, image_name(img));
+		fprintf(fp, "PBRO: Read %d bytes while %d expected from %s\n",
+			  ret, size, image_name(img));
+		fflush(fp);
 		ret = -1;
 		goto err;
 	}
@@ -106,6 +142,9 @@ int do_pb_read_one(struct cr_img *img, void **pobj, int type, bool eof)
 		ret = -1;
 		pr_err("Failed unpacking object %p from %s\n",
 		       pobj, image_name(img));
+		fprintf(fp, "PBRO: Failed unpacking object %p from %s\n",
+		       pobj, image_name(img));
+		fflush(fp);
 		goto err;
 	}
 
@@ -113,7 +152,7 @@ int do_pb_read_one(struct cr_img *img, void **pobj, int type, bool eof)
 err:
 	if (buf != (void *)&local)
 		xfree(buf);
-
+	fclose(fp);
 	return ret;
 }
 

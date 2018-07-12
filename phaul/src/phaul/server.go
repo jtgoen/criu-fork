@@ -49,6 +49,7 @@ func (s *PhaulServer) StartLazyPages() error {
 	}
 
 	img_dir, err := os.Open(s.imgs.dir)
+	fmt.Printf("img_dir: %s\n", s.imgs.dir)
 	if err != nil {
 		return err
 	}
@@ -60,12 +61,14 @@ func (s *PhaulServer) StartLazyPages() error {
 	if err != nil {
 		return err
 	}
-
+	
+	fmt.Println("Past s.cr.StartLazyPages(opts)")
 	s.process, err = os.FindProcess(pid)
 	if err != nil {
 		return err
 	}
-
+	
+	fmt.Println("Returning from server StartLazyPages()")
 	return nil
 }
 

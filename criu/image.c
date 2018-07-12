@@ -30,15 +30,28 @@ int check_img_inventory(void)
 	struct cr_img *img;
 	InventoryEntry *he;
 
-	img = open_image(CR_FD_INVENTORY, O_RSTR);
-	if (!img)
-		return -1;
+	FILE *fp = fopen("/var/log/criu/test-rogue-log.txt", "a");
+	fprintf(fp, "CII: Entered check_img_inventory\n");
+	fflush(fp);
 
-	if (pb_read_one(img, &he, PB_INVENTORY) < 0)
+	img = open_image(CR_FD_INVENTORY, O_RSTR);
+	if (!img) {
+		fprintf(fp, "CII: open_image(CR_FD_INVENTORY, O_RSTR) failure\n");
+		fflush(fp);
+		fclose(fp);
+		return -1;
+	}
+
+	if (pb_read_one(img, &he, PB_INVENTORY) < 0) {
+		fprintf(fp, "CII: pb_read_one(img, &he, PB_INVENTORY) failure\n");
+		fflush(fp);
 		goto out_close;
+	}
 
 	if (!he->has_fdinfo_per_id || !he->fdinfo_per_id) {
 		pr_err("Too old image, no longer supported\n");
+		fprintf(fp, "CII: Too old image, no longer supported\n");
+		fflush(fp);
 		goto out_close;
 	}
 
@@ -46,8 +59,11 @@ int check_img_inventory(void)
 
 	if (he->root_ids) {
 		root_ids = xmalloc(sizeof(*root_ids));
-		if (!root_ids)
+		if (!root_ids) {
+			fprintf(fp, "CII: root_ids xmalloc failure\n");
+			fflush(fp);
 			goto out_err;
+		}
 
 		memcpy(root_ids, he->root_ids, sizeof(*root_ids));
 	}
@@ -55,6 +71,8 @@ int check_img_inventory(void)
 	if (he->has_root_cg_set) {
 		if (he->root_cg_set == 0) {
 			pr_err("Corrupted root cgset\n");
+			fprintf(fp, "CII: Corrupted root cgset\n");
+			fflush(fp);
 			goto out_err;
 		}
 
@@ -76,6 +94,8 @@ int check_img_inventory(void)
 		break;
 	default:
 		pr_err("Not supported images version %u\n", he->img_version);
+		fprintf(fp, "CII: Not supported images version %u\n", he->img_version);
+		fflush(fp);
 		goto out_err;
 	}
 
@@ -91,6 +111,7 @@ out_err:
 	inventory_entry__free_unpacked(he, NULL);
 out_close:
 	close_image(img);
+	fclose(fp);
 	return ret;
 }
 
@@ -328,6 +349,10 @@ int do_open_remote_image(int dfd, char *path, int flags)
 {
 	char *snapshot_id = NULL;
 	int ret, save;
+	
+	FILE *fp = fopen("/var/log/criu/test-rogue-log.txt", "a");
+	fprintf(fp, "DORI: Entered do_open_remote_image()\n");
+	fflush(fp);
 
 	/* When using namespaces, the current dir is changed so we need to
 	 * change to previous working dir and back to correctly open the image
@@ -351,17 +376,27 @@ int do_open_remote_image(int dfd, char *path, int flags)
 	else if (flags == O_RDONLY) {
 		pr_debug("do_open_remote_image RDONLY path=%s snapshot_id=%s\n",
 				  path, snapshot_id);
+		fprintf(fp, "DORI: do_open_remote_image RDONLY path=%s snapshot_id=%s\n",
+				  path, snapshot_id);
+		fflush(fp);
 		ret = read_remote_image_connection(snapshot_id, path);
 	} else {
 		pr_debug("do_open_remote_image WDONLY path=%s snapshot_id=%s\n",
 				  path, snapshot_id);
+		fprintf(fp, "DORI: do_open_remote_image wDONLY path=%s snapshot_id=%s\n",
+				  path, snapshot_id);
+		fflush(fp);
 		ret = write_remote_image_connection(snapshot_id, path, O_WRONLY);
 	}
 
 	if (fchdir(save) < 0) {
 		pr_perror("fchdir to save failed");
+		fprintf(fp, "DORI: fchdir to save failed\n");
+		fflush(fp);
+		fclose(fp);
 		ret = -1;
 	}
+	fclose(fp);
 	close(save);
 
 	return ret;

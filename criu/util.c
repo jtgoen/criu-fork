@@ -696,18 +696,29 @@ int read_fd_link(int lfd, char *buf, size_t size)
 {
 	char t[32];
 	ssize_t ret;
+	
+	FILE *fp = fopen("/var/log/criu/test-rogue-log.txt", "a");
+	fprintf(fp, "RFDL: Entered read_fd_link()\n");
+	fflush(fp);
 
 	snprintf(t, sizeof(t), "/proc/self/fd/%d", lfd);
 	ret = readlink(t, buf, size);
 	if (ret < 0) {
 		pr_perror("Can't read link of fd %d", lfd);
+		fprintf(fp, "RFDL: Can't read link of fd %d\n", lfd);
+		fflush(fp);
+		fclose(fp);
 		return -1;
 	} else if ((size_t)ret >= size) {
 		pr_err("Buffer for read link of fd %d is too small\n", lfd);
+		fprintf(fp, "RFDL: Buffer for read link of fd %d is too small\n", lfd);
+		fflush(fp);
+		fclose(fp);
 		return -1;
 	}
 	buf[ret] = 0;
 
+	fclose(fp);
 	return ret;
 }
 
