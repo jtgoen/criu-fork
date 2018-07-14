@@ -134,11 +134,13 @@ func (pc *PhaulClient) Migrate() error {
 			err = pc.remote.StartIter()
 			if err == nil {
 				prev_p := imgs.lastImagesDir()
+				fmt.Println("Dumping Final...")
 				err = pc.local.DumpCopyRestore(criu_c, pc.cfg, prev_p)
 				err2 := pc.remote.StopIter()
 				if err == nil {
 					err = err2
 				}
+				fmt.Println("Dumped Final...")
 			}
 	}
 
