@@ -85,10 +85,10 @@ func mergeImages(dump_dir, last_pre_dump_dir string) error {
 func (r *testRemote) doRestore() error {
 	img_path := ""
 	if r.srv.IsLazy() {
-		err := r.srv.StartLazyPages()
-		if err != nil {
-			return err
-		}
+		//err := r.srv.StartLazyPages()
+		//if err != nil {
+		//	return err
+		//}
 		img_path = r.srv.GetDir()
 	} else {
 		last_srv_images_dir := r.srv.LastImagesDir()

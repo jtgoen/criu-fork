@@ -77,10 +77,10 @@ func (pc *PhaulClient) Migrate() error {
 	}
 
 	if pc.cfg.Lazy {
-		/*err := pc.remote.StartLazyPages()
-                if err != nil {
-                        return err
-                }*/
+		err := pc.remote.StartLazyPages()
+		if err != nil {
+				return err
+		}
 		fmt.Println("Dumping Lazily...")
 		err = pc.local.DumpCopyRestore(criu_c, pc.cfg, "")
 		if err != nil {
