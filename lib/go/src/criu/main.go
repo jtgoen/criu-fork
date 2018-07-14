@@ -113,7 +113,7 @@ func (c *Criu) doSwrkWithResp(req_type rpc.CriuReqType, opts *rpc.CriuOpts, nfy 
 			return nil, err
 		}
 
-		fmt.Printf("sending a %s req! for pid %d with success bool %t\n",req.Type.String(), req.Pid, *req.NotifySuccess)
+		fmt.Printf("sending a %s req! for pid %d\n",req.Type.String(), req.Pid)
 		resp_b, resp_s, err := c.sendAndRecv(req_b)
 		if err != nil {
 			return nil, err
