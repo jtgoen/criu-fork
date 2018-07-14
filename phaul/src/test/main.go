@@ -121,10 +121,11 @@ func (r *testRemote) doRestore() error {
 	fmt.Printf("Do restore\n")
 	err = cr.Restore(opts, nil)
 	if err != nil {
-		fmt.Println(err);
+		fmt.Println(err)
 	}
-	fmt.Println("Finished restoring");
-	return err;
+	fmt.Println("Finished restoring")
+	r.srv.StopIter()
+	return err
 }
 
 func (l *testLocal) PostDump() error {
@@ -134,7 +135,6 @@ func (l *testLocal) PostDump() error {
 			return err
 		}
 	}
-
 	return l.r.doRestore()
 }
 
