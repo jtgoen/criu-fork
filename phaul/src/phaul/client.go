@@ -87,6 +87,7 @@ func (pc *PhaulClient) Migrate() error {
 			return err
 		}
 		fmt.Println("Dumped Lazily...")
+		err = pc.remote.StopIter()
 	} else {
 		prev_stats := &stats.DumpStatsEntry{}
 		iter := 0
