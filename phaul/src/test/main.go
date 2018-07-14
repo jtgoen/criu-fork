@@ -125,7 +125,6 @@ func (r *testRemote) doRestore() error {
 		fmt.Println(err)
 	}
 	fmt.Println("Finished restoring")
-	r.srv.StopIter()
 	return err
 }
 
