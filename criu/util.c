@@ -888,6 +888,7 @@ int close_status_fd(void)
 int cr_daemon(int nochdir, int noclose, int *keep_fd, int close_fd)
 {
 	int pid;
+	FILE *fp = fopen("/var/log/criu/test-rogue-log.txt", "a");
 
 	pid = fork();
 	if (pid < 0) {
@@ -895,8 +896,14 @@ int cr_daemon(int nochdir, int noclose, int *keep_fd, int close_fd)
 		return -1;
 	}
 
-	if (pid > 0)
+	if (pid > 0) {
+        fprintf(fp, "cr_daemon (util.c): pid>0= %d\n", pid);
+        fflush(fp);
 		return pid;
+	}
+
+	fprintf(fp, "cr_daemon (util.c): pid= %d\n", pid);
+    fflush(fp);
 
 	setsid();
 	if (!nochdir)
@@ -912,6 +919,7 @@ int cr_daemon(int nochdir, int noclose, int *keep_fd, int close_fd)
 			fd = dup2(*keep_fd, 3);
 			if (fd < 0) {
 				pr_perror("Dup2 failed");
+				fclose(fp);
 				return -1;
 			}
 			close(*keep_fd);
@@ -921,6 +929,7 @@ int cr_daemon(int nochdir, int noclose, int *keep_fd, int close_fd)
 		fd = open("/dev/null", O_RDWR);
 		if (fd < 0) {
 			pr_perror("Can't open /dev/null");
+			fclose(fp);
 			return -1;
 		}
 		dup2(fd, 0);
@@ -928,6 +937,8 @@ int cr_daemon(int nochdir, int noclose, int *keep_fd, int close_fd)
 		dup2(fd, 2);
 		close(fd);
 	}
+
+	fclose(fp);
 
 	return 0;
 }
