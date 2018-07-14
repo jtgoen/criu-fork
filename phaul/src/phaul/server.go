@@ -57,17 +57,12 @@ func (s *PhaulServer) StartLazyPages() error {
 
 	opts.ImagesDirFd = proto.Int32(int32(img_dir.Fd()))
 
-	pid, _, err := s.cr.StartLazyPages(opts)
+	err = s.cr.StartLazyPages(opts)
 	if err != nil {
 		return err
 	}
 	
 	fmt.Println("Past s.cr.StartLazyPages(opts)")
-	s.process, err = os.FindProcess(pid)
-	fmt.Printf("s.process: %d \n",s.process.Pid)
-	if err != nil {
-		return err
-	}
 	
 	fmt.Println("Returning from server StartLazyPages()")
 	return nil

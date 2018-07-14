@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/checkpoint-restore/criu/lib/go/src/rpc"
+	"runtime"
 )
 
 type Criu struct {
@@ -142,6 +143,11 @@ func (c *Criu) doSwrkWithResp(req_type rpc.CriuReqType, opts *rpc.CriuOpts, nfy 
 			err = nfy.PreDump()
 		case "post-dump":
 			err = nfy.PostDump()
+			fmt.Printf("Postdump result: %s\n", err)
+			_, file, no, ok := runtime.Caller(1)
+			if ok {
+				fmt.Printf("called from %s#%d\n", file, no)
+			}
 		case "pre-restore":
 			err = nfy.PreRestore()
 		case "post-restore":
@@ -189,16 +195,17 @@ func (c *Criu) StartPageServer(opts rpc.CriuOpts) error {
 	return c.doSwrk(rpc.CriuReqType_PAGE_SERVER, &opts, nil)
 }
 
-func (c *Criu) StartLazyPages(opts rpc.CriuOpts) (int, int, error) {
+func (c *Criu) StartLazyPages(opts rpc.CriuOpts) error {
 	fmt.Printf("Made it into StartLazyPages(opts)!\n")
-	resp, err := c.doSwrkWithResp(rpc.CriuReqType_LAZY_PAGES, &opts, nil)
-	fmt.Printf("Made it after doSwrkWithResp! resp: %d %d\n",resp.Ps.GetPid(), resp.Ps.GetPort())
-	if err != nil {
-		fmt.Println(err)
-		return 0, 0, err
-	}
-	fmt.Println("Returning from StartLazyPages(opts)")
-	return int(resp.Ps.GetPid()), int(resp.Ps.GetPort()), nil
+	//resp, err := c.doSwrkWithResp(rpc.CriuReqType_LAZY_PAGES, &opts, nil)
+	//fmt.Printf("Made it after doSwrkWithResp! resp: %d %d\n",resp.Ps.GetPid(), resp.Ps.GetPort())
+	//if err != nil {
+	//	fmt.Println(err)
+	//	return 0, 0, err
+	//}
+	//fmt.Println("Returning from StartLazyPages(opts)")
+	//return int(resp.Ps.GetPid()), int(resp.Ps.GetPort()), nil
+	return c.doSwrk(rpc.CriuReqType_LAZY_PAGES, &opts, nil)
 }
 
 func (c *Criu) StartPageServerChld(opts rpc.CriuOpts) (int, int, error) {
