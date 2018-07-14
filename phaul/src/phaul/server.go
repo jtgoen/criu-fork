@@ -64,6 +64,7 @@ func (s *PhaulServer) StartLazyPages() error {
 	
 	fmt.Println("Past s.cr.StartLazyPages(opts)")
 	s.process, err = os.FindProcess(pid)
+	fmt.Printf("s.process: %d \n",s.process.Pid)
 	if err != nil {
 		return err
 	}
