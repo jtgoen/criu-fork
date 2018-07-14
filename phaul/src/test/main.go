@@ -181,6 +181,7 @@ func (l *testLocal) DumpCopyRestore(cr *criu.Criu, cfg phaul.PhaulConfig, last_c
 
 func main() {
 	pid, _ := strconv.Atoi(os.Args[1])
+	fmt.Printf("PID we are tracking: %d\n", pid)
 	var lazy bool
 	if len(os.Args) >= 3 {
 		lazy, _ = strconv.ParseBool(os.Args[2])
