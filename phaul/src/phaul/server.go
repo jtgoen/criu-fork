@@ -118,6 +118,7 @@ func (s *PhaulServer) StartIter() error {
 }
 
 func (s *PhaulServer) StopIter() error {
+	fmt.Printf("Making process %d wait!\n", s.process.Pid)
 	state, err := s.process.Wait()
 	if err != nil {
 		return nil

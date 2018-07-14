@@ -11,6 +11,7 @@ import (
 	"github.com/checkpoint-restore/criu/lib/go/src/criu"
 	"github.com/checkpoint-restore/criu/lib/go/src/rpc"
 	"github.com/checkpoint-restore/criu/phaul/src/phaul"
+	"runtime"
 )
 
 type testLocal struct {
@@ -129,6 +130,11 @@ func (r *testRemote) doRestore() error {
 }
 
 func (l *testLocal) PostDump() error {
+	_, file, no, ok := runtime.Caller(1)
+	if ok {
+		fmt.Printf("called from %s#%d\n", file, no)
+	}
+
 	if l.r.srv.IsLazy() {
 		err := l.r.srv.StartLazyPages()
 		if err != nil {
