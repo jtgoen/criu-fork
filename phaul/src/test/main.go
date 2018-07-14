@@ -11,7 +11,6 @@ import (
 	"github.com/checkpoint-restore/criu/lib/go/src/criu"
 	"github.com/checkpoint-restore/criu/lib/go/src/rpc"
 	"github.com/checkpoint-restore/criu/phaul/src/phaul"
-	"runtime"
 )
 
 type testLocal struct {
@@ -86,8 +85,11 @@ func mergeImages(dump_dir, last_pre_dump_dir string) error {
 func (r *testRemote) doRestore() error {
 	img_path := ""
 	if r.srv.IsLazy() {
+		err := r.srv.StartLazyPages()
+		if err != nil {
+			return err
+		}
 		img_path = r.srv.GetDir()
-
 	} else {
 		last_srv_images_dir := r.srv.LastImagesDir()
 		/*
@@ -129,17 +131,6 @@ func (r *testRemote) doRestore() error {
 }
 
 func (l *testLocal) PostDump() error {
-	_, file, no, ok := runtime.Caller(1)
-	if ok {
-		fmt.Printf("called from %s#%d\n", file, no)
-	}
-
-	if l.r.srv.IsLazy() {
-		err := l.r.srv.StartLazyPages()
-		if err != nil {
-			return err
-		}
-	}
 	return l.r.doRestore()
 }
 
