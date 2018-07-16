@@ -77,7 +77,7 @@ func (pc *PhaulClient) Migrate() error {
 	}
 
 	if pc.cfg.Lazy {
-		err := pc.remote.StartLazyPages()
+		//err := pc.remote.StartLazyPages()
 		//if err != nil {
 		//		return err
 		//}
