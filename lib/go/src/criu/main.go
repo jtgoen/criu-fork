@@ -114,10 +114,6 @@ func (c *Criu) doSwrkWithResp(req_type rpc.CriuReqType, opts *rpc.CriuOpts, nfy 
 		}
 
 		fmt.Printf("sending a %s req! for pid %d\n. Here's the struct: %+v\n",req.Type.String(), req.Pid, req)
-		if *req.Type == rpc.CriuReqType_DUMP {
-			for {
-			}
-		}
 		resp_b, resp_s, err := c.sendAndRecv(req_b)
 		if err != nil {
 			return nil, err
