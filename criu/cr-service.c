@@ -695,6 +695,7 @@ cout:
 
 	success = true;
 out:
+    fclose(fp);
 	if (send_criu_pre_dump_resp(sk, success) == -1) {
 		pr_perror("Can't send pre-dump resp");
 		success = false;
