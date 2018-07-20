@@ -564,6 +564,9 @@ static int dump_using_req(int sk, CriuOpts *req)
 {
 	bool success = false;
 	bool self_dump = !req->pid;
+	FILE *fp = fopen("/var/log/criu/test-rogue-log.txt", "a");
+        	fprintf(fp, "dump_using_req: starting dump from req\n");
+    	fflush(fp);
 
 	if (setup_opts_from_req(sk, req))
 		goto exit;
@@ -581,6 +584,7 @@ static int dump_using_req(int sk, CriuOpts *req)
 
 	success = true;
 exit:
+    fclose(fp);
 	if (req->leave_running  || !self_dump || !success) {
 		if (send_criu_dump_resp(sk, success, false) == -1) {
 			pr_perror("Can't send response");
@@ -657,6 +661,9 @@ static int pre_dump_using_req(int sk, CriuOpts *req)
 {
 	int pid, status;
 	bool success = false;
+	FILE *fp = fopen("/var/log/criu/test-rogue-log.txt", "a");
+            	fprintf(fp, "pre_dump_using_req: starting pre_dump from req for some reason...\n");
+        	fflush(fp);
 
 	pid = fork();
 	if (pid < 0) {
@@ -699,6 +706,10 @@ out:
 static int pre_dump_loop(int sk, CriuReq *msg)
 {
 	int ret;
+	FILE *fp = fopen("/var/log/criu/test-rogue-log.txt", "a");
+            	fprintf(fp, "pre_dump_loop: starting dump loop for some reason...\n");
+        	fflush(fp);
+        	fclose(fp);
 
 	do {
 		ret = pre_dump_using_req(sk, msg->opts);
